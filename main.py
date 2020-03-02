@@ -2,7 +2,8 @@ from datetime import datetime as dt
 import copy
 import sys
 import argparse
-
+import math
+import heapq as heap_queue_algorithm
 start_time = dt.now()
 
 DEBUG = False
@@ -227,6 +228,23 @@ class Solvable:
 class Printer:
 
 	@staticmethod
+	def get_list_node(final_graph_node):
+		print (final_graph_node)
+		global_set = []
+
+		while final_graph_node:
+			global_set.insert(0, final_graph_node)
+			final_graph_node = final_graph_node.otcovskii_pazl
+		return global_set
+
+	@staticmethod
+	def print_list_node(global_set):
+		for tekushii_pazl in global_set:
+			for ryad in tekushii_pazl.map_:
+				Printer.logger('term', ' '.join(map(str, ryad)))
+			Printer.logger('term', ' ')
+
+	@staticmethod
 	def print_puzzle(puzzle, puzzle_size):
 		for i in range(puzzle_size):
 			Printer.logger('term', puzzle[i]) 
@@ -249,12 +267,14 @@ class Printer:
 
 	@staticmethod
 	def display_results(moves_to_finish, complexTime, complexSize, visualization):
-	    if visualization == True:
-	        Printer.step_visualization(moves_to_finish)
-	    Printer.logger('term', f"complex time: {str(complexTime)}")
-	    Printer.logger('term', f"complex size: {str(complexSize)}")
-	    Printer.logger('term', f"how many steps required: {str(len(moves_to_finish) - 1)}")
-	    Printer.logger('term', f"full program time: {str(dt.now() - start_time)}")
+		Printer.print_list_node( Printer.get_list_node(moves_to_finish) )
+		print ("Done")
+	    # # if visualization == True:
+	    # #     Printer.step_visualization(moves_to_finish.map_)
+	    # Printer.logger('term', f"complex time: {str(complexTime)}")
+	    # Printer.logger('term', f"complex size: {str(complexSize)}")
+	    # #Printer.logger('term', f"how many steps required: {str(len(moves_to_finish) - 1)}")
+	    # Printer.logger('term', f"full program time: {str(dt.now() - start_time)}")
 
 	@staticmethod
 	def logger(module, str):
@@ -384,6 +404,19 @@ class Crutches:
 #=======================================================================================
 #Class that containing different puzzle map information
 class MetaDataMap():
+	def __hash__(self):
+		return hash(str(self.map_))
+
+	def __eq__(self, other):
+		if isinstance(other, self.__class__):
+			return self.map_ == other.map_
+		return False
+
+	def __lt__(self, other):
+		if isinstance(other, self.__class__):
+			return self.total_f < other.total_f
+		return False
+
 	def __init__(self, map_=[], otcovskii_pazl=None, euristic_h=0, cena_hoda_g=0, total_f=0, poslednii_hod=None):
 		self.map_ = map_
 		self.otcovskii_pazl = otcovskii_pazl
@@ -410,18 +443,18 @@ class MetaDataMap():
 		# trying to handle blind choosen_search (uniform cost a.k.a. brute force machiiine)
 		if choosen_search == 3:
 			if self.otcovskii_pazl:
-				self.cena_hoda_g = self.otcovskii_pazl.move_cost + 1
+				self.cena_hoda_g = self.otcovskii_pazl.cena_hoda_g + 1
 				self.total_f = self.cena_hoda_g
 			else:
 				self.total_f = self.cena_hoda_g
 		else:
 			# Процессим все возможные расчёты евристических дистанций
-			for x, tiles_row in enumerate(self.map_):
+			for x, stroki_map in enumerate(self.map_):
 
-				for y, tile_value in enumerate(tiles_row):
+				for y, znachenie_stroki in enumerate(stroki_map):
 
-					if tile_value:
-						a, b = Solvable.find_coordinates_of_the_given_digit(tile_value, finish_object.map_)
+					if znachenie_stroki:
+						a, b = Solvable.find_coordinates_of_the_given_digit(znachenie_stroki, finish_object.map_)
 
 						if choosen_metric == 1:
                             # манхетенская дистанция
@@ -446,29 +479,38 @@ class MetaDataMap():
 						elif choosen_metric == 5:
 							# хамминга
 							#Printer.logger('debug', f'calucate map with Hamming')
-							if tile_value != finish_object.map_[x][y]:
+							if znachenie_stroki != finish_object.map_[x][y]:
 								total_heuristic_f += 1
 
 						elif choosen_metric == 6:
 							# канбера
 							#Printer.logger('debug', f'calucate map with Canberra')
+							
 							if x or a:
 								total_heuristic_f += abs(x-a) / (x+a)
+							
 							if y or b:
 								total_heuristic_f += abs(y-b) / (y+b)
 
 		self.euristic_h = total_heuristic_f
 
-		# handle choosen_search type 1 standard or 2 greedy
+		# чекни тут стандартный поиск и еще гриди сьорч (2ечка)
+
 		if choosen_search == 2:
 			self.total_f = self.euristic_h
+		
 		else:
+			#//checkai default algo
 			if self.otcovskii_pazl:
-				self.cena_hoda_g = self.otcovskii_pazl.cena_hoda_g + 1
-				self.total_f = total_heuristic_f + self.cena_hoda_g
-			else:
-				self.total_f = total_heuristic_f
 
+				self.cena_hoda_g = self.otcovskii_pazl.cena_hoda_g + 1
+
+				self.total_f = total_heuristic_f + self.cena_hoda_g
+		
+			else:
+			#kostyl na init iteraciyu
+				self.total_f = total_heuristic_f
+		#vozvrashai object na bazu
 		return self
 
 #=======================================================================================
@@ -476,9 +518,59 @@ class MetaDataMap():
 #Class that process resolving of the puzzle
 class SolveManager:
 
+	#naidi luchshii solution v close set, i verni ego
+	@staticmethod
+	def check_best_variant_in_close_set(tekushii_pazl=None, close_set={}):
+		return tekushii_pazl in close_set and close_set[tekushii_pazl] <= tekushii_pazl.total_f
+
+	@staticmethod
+	def main_a_star_algorithm(start_object, finish_object, metric=1, search=1):
+		finish_zero_coordinate_y, finish_zero_coordinate_x = Solvable.find_coordinates_of_the_given_digit(0, finish_object.map_)
+		start_object = start_object.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric)
+
+#Internal variables from MetaData class
+#map_ = map_
+#otcovskii_pazl = otcovskii_pazl
+#euristic_h = euristic_h
+#cena_hoda_g = cena_hoda_g
+#total_f = total_f
+#poslednii_hod = poslednii_hod
+
+		open_set = []
+		heap_queue_algorithm.heappush(open_set, start_object)
+		close_set = {}
+		time_complex = size_complex = 0
+		len_of_map = len(start_object.map_)
+		while 1:
+			if not open_set:
+				print('NOT FOUND', start_puzzle.tiles)
+				return
+
+			tekushii_pazl = heap_queue_algorithm.heappop(open_set)
+        
+			time_complex += 1
+			if len(open_set)+len(close_set) > size_complex:
+				size_complex = len(open_set) + len(close_set)
+
+			if tekushii_pazl == finish_object:
+				print (tekushii_pazl)
+				print ("beee")
+				Printer.display_results(tekushii_pazl, time_complex, size_complex, 1)
+				return
+
+			if not SolveManager.check_best_variant_in_close_set(tekushii_pazl, close_set):
+				close_set[tekushii_pazl] = tekushii_pazl.total_f
+				nasledniki = SolveManager.create_naslednikov(tekushii_pazl, len_of_map)
+
+			for naslednik in nasledniki:
+				heap_queue_algorithm.heappush(open_set, naslednik.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric))
+
+	#obertka dlya osnovnogo rekursivnogo solvera
 	@staticmethod
 	def start_solve(base_map, ideal_map, choosen_metric, choosen_search):
 		Printer.logger('debug', "Starting solving")	
+		recursive = False
+
 
 		#create data objects where we will save temp values
 		start_object = MetaDataMap(map_=base_map)
@@ -495,28 +587,131 @@ class SolveManager:
 		start_object.objectCreator()
 		start_object.dumpObject()
 
-		exit(1)
-		# max_total_cost = start_puzzle.total_cost
-		# z_a, z_b = _get_tile_coordinates(0, finish_puzzle)
+		summary_cost = start_object.total_f
+		finish_zero_coordinate_y, finish_zero_coordinate_x = Solvable.find_coordinates_of_the_given_digit(0, finish_object.map_)
 	
-		# complexity_time = 0
-		# max_size = 0
-	 #    while 1:
-	 #        complexity_size = 1
-	 #        puzzle, new_total_cost, complexity_time, complexity_size = _ida_recursive_search(start_puzzle, max_total_cost, z_a, z_b, complexity_time, complexity_size, metric, finish_puzzle, n, search)
-	
-	 #        if max_size < complexity_size:
-	 #            max_size = complexity_size
-	
-	 #        if puzzle != None:
-	 #            _print_solution(puzzle, complexity_time, max_size, start_time)
-	 #            return
-	
-	 #        if new_total_cost == math.inf:
-	 #            return
-	
-	 #        max_total_cost = new_total_cost
+		time_complex = 0
+		size_max = 0
+		len_of_map = len(start_object.map_)
+		
+		SolveManager.main_a_star_algorithm(start_object, finish_object, choosen_metric, choosen_search)
 
+		if (recursive == True):
+			Printer.logger('debug', 'You have tried to use recursive search, bro, have fun :d')
+			Printer.logger('debug', "Entered main solver search loop")
+			while True:
+				size_complex = 1
+				puzzle, updated_summary_cost, time_complex, size_complex = SolveManager.searching_step(start_object, summary_cost, finish_zero_coordinate_y, finish_zero_coordinate_x, time_complex, size_complex, metric, finish_object, len_of_map, search)
+				if size_max < size_complex:
+					size_max = size_complex
+				if puzzle != None:
+					print ("RECURSIVE SEARCH DONE:DD EXITING")
+					exit(1)
+					return
+				if updated_summary_cost == math.inf:
+					return
+				summary_cost = updated_summary_cost
+
+#Internal variables from MetaData class
+#map_ = map_
+#otcovskii_pazl = otcovskii_pazl
+#euristic_h = euristic_h
+#cena_hoda_g = cena_hoda_g
+#total_f = total_f
+#poslednii_hod = poslednii_hod
+
+	@staticmethod
+	def searching_step(map_object, summary_cost, finish_zero_coordinate_y, finish_zero_coordinate_x, time_complex, size_complex, metric, finish_object, len_of_map, search):
+#method kotorii delaet vsyu robotu, generit naslednikov, delaet hod, obnovlyaet vesa, cennosti hodov i tak dalee
+		print ('zashel v searching_step')
+		if map_object.total_f > summary_cost:
+			return None, map_object.total_f, time_complex, size_complex
+
+		time_complex += 1
+		if map_object == finish_object:
+			return map_object, summary_cost, time_complex, size_complex
+
+		minimalnii_cost = math.inf
+		nasledniki = SolveManager.create_naslednikov(map_object, len_of_map)
+		size_complex += len(nasledniki) #kolli4estvo osmotrenih hodov
+		
+		#debug logi na proverochku naslednikov
+		# for i in nasledniki:
+		# 	i.dumpObject()
+
+		for naslednik in nasledniki:
+			naslednik = naslednik.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric)
+			tekushii_pazl, novyi_cost, time_complex, size_complex = SolveManager.searching_step(naslednik, summary_cost, finish_zero_coordinate_y, finish_zero_coordinate_x, time_complex, size_complex, metric, finish_object, len_of_map, search)
+
+			if tekushii_pazl != None:
+				return tekushii_pazl, None, time_complex, size_complex
+
+			if novyi_cost < minimalnii_cost:
+				minimalnii_cost = novyi_cost
+
+		return None, minimalnii_cost, time_complex, size_complex
+
+#Internal variables from MetaData class
+#map_ = map_
+#otcovskii_pazl = otcovskii_pazl
+#euristic_h = euristic_h
+#cena_hoda_g = cena_hoda_g
+#total_f = total_f
+#poslednii_hod = poslednii_hod
+
+	@staticmethod
+	def prepare_move_up(object_entity, x , y ):
+		karta = copy.deepcopy(object_entity.map_)
+		karta[x][y], karta[x+1][y] = karta[x+1][y], karta[x][y]
+		naslednik = MetaDataMap(map_=karta, otcovskii_pazl=object_entity)
+		naslednik.poslednii_hod = 'up'
+		return naslednik
+	
+	@staticmethod
+	def prepare_move_down(object_entity, x , y ):
+		karta = copy.deepcopy(object_entity.map_)
+		karta[x][y], karta[x-1][y] = karta[x-1][y], karta[x][y]
+		naslednik = MetaDataMap(map_=karta, otcovskii_pazl=object_entity)
+		naslednik.poslednii_hod = 'down'
+		return naslednik
+
+	@staticmethod
+	def prepare_move_left(object_entity, x , y ):
+		karta = copy.deepcopy(object_entity.map_)
+		karta[x][y], karta[x][y+1] = karta[x][y+1], karta[x][y]
+		naslednik = MetaDataMap(map_=karta, otcovskii_pazl=object_entity)
+		naslednik.poslednii_hod = 'left'
+		return naslednik
+	
+	@staticmethod
+	def prepare_move_right(object_entity, x , y ):
+		karta = copy.deepcopy(object_entity.map_)
+		karta[x][y], karta[x][y-1] = karta[x][y-1], karta[x][y]
+		naslednik = MetaDataMap(map_=karta, otcovskii_pazl=object_entity)
+		naslednik.poslednii_hod = 'right'
+		return naslednik
+
+	@staticmethod
+	def create_naslednikov(start_object, len_of_map):
+		nasledniki = []
+		x, y = Solvable.find_coordinates_of_the_given_digit(0, start_object.map_)
+
+		if x+1 < len_of_map and start_object.poslednii_hod != 'down':
+			nasledniki.append( SolveManager.prepare_move_up(start_object, x, y) )
+
+		if x-1 >= 0 and start_object.poslednii_hod != 'up':
+			nasledniki.append( SolveManager.prepare_move_down(start_object, x, y) )
+
+		if y+1 < len_of_map and start_object.poslednii_hod != 'right':
+			nasledniki.append( SolveManager.prepare_move_left(start_object, x, y) )
+
+		if y-1 >= 0 and start_object.poslednii_hod != 'left':
+			nasledniki.append( SolveManager.prepare_move_right(start_object, x, y) )
+
+		# for i in nasledniki:
+		# 	i.dumpObject()
+
+		return nasledniki
 
 #utility function that actually start command line parser
 def command_line_parsing():
