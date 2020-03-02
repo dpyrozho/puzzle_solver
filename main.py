@@ -382,97 +382,140 @@ class Crutches:
 		Printer.display_results( '1', 0, 0, 1)
 
 #=======================================================================================
+#Class that containing different puzzle map information
+class MetaDataMap():
+	def __init__(self, map_=[], otcovskii_pazl=None, euristic_h=0, cena_hoda_g=0, total_f=0, poslednii_hod=None):
+		self.map_ = map_
+		self.otcovskii_pazl = otcovskii_pazl
+		self.euristic_h = euristic_h
+		self.cena_hoda_g = cena_hoda_g
+		self.total_f = total_f
+		self.poslednii_hod = poslednii_hod
+
+	def dumpObject(self):
+		Printer.logger('debug', f'map_ {self.map_}')
+		Printer.logger('debug', f'otcovskii_pazl {self.otcovskii_pazl}')
+		Printer.logger('debug', f'heuristic_h {self.euristic_h }')
+		Printer.logger('debug', f'cena hoda {self.cena_hoda_g}')
+		Printer.logger('debug', f'total_f {self.total_f}')
+		Printer.logger('debug', f'poslednii_hod {self.poslednii_hod}')
+
+	def objectCreator(self):
+		Printer.logger('debug', 'Objected MetaDataMap created')
+
+	def euristic_calculator(self, zero_coordinate_y, zero_coordinate_x, finish_object, choosen_search, choosen_metric):
+		Printer.logger('debug', f'starting calculating euristic with next map {finish_object.map_}, choosen_search {choosen_search}, choosen_metric {choosen_metric}')
+		total_heuristic_f = 0
+
+		# trying to handle blind choosen_search (uniform cost a.k.a. brute force machiiine)
+		if choosen_search == 3:
+			if self.otcovskii_pazl:
+				self.cena_hoda_g = self.otcovskii_pazl.move_cost + 1
+				self.total_f = self.cena_hoda_g
+			else:
+				self.total_f = self.cena_hoda_g
+		else:
+			# Процессим все возможные расчёты евристических дистанций
+			for x, tiles_row in enumerate(self.map_):
+
+				for y, tile_value in enumerate(tiles_row):
+
+					if tile_value:
+						a, b = Solvable.find_coordinates_of_the_given_digit(tile_value, finish_object.map_)
+
+						if choosen_metric == 1:
+                            # манхетенская дистанция
+							#Printer.logger('debug', f'calucate map with Manhattan')
+							total_heuristic_f += abs(x - a) + abs(y - b)
+
+						elif choosen_metric == 2:
+							# эвклидовая дистанция
+							#Printer.logger('debug', f'calucate map with Euclidean')
+							total_heuristic_f += math.sqrt((x - a)**2 + (y - b)**2)
+
+						elif choosen_metric == 3:
+							# чебышева
+							#Printer.logger('debug', f'calucate map with Chebyshev')
+							total_heuristic_f += max([abs(x - a), abs(y - b)])
+
+						elif choosen_metric == 4:
+							# минковски p=4
+							#Printer.logger('debug', f'calucate map with Minkowski')
+							total_heuristic_f += ((x - a)**4 + (y - b)**4)**0.25
+
+						elif choosen_metric == 5:
+							# хамминга
+							#Printer.logger('debug', f'calucate map with Hamming')
+							if tile_value != finish_object.map_[x][y]:
+								total_heuristic_f += 1
+
+						elif choosen_metric == 6:
+							# канбера
+							#Printer.logger('debug', f'calucate map with Canberra')
+							if x or a:
+								total_heuristic_f += abs(x-a) / (x+a)
+							if y or b:
+								total_heuristic_f += abs(y-b) / (y+b)
+
+		self.euristic_h = total_heuristic_f
+
+		# handle choosen_search type 1 standard or 2 greedy
+		if choosen_search == 2:
+			self.total_f = self.euristic_h
+		else:
+			if self.otcovskii_pazl:
+				self.cena_hoda_g = self.otcovskii_pazl.cena_hoda_g + 1
+				self.total_f = total_heuristic_f + self.cena_hoda_g
+			else:
+				self.total_f = total_heuristic_f
+
+		return self
+
+#=======================================================================================
+
 #Class that process resolving of the puzzle
 class SolveManager:
+
 	@staticmethod
 	def start_solve(base_map, ideal_map, choosen_metric, choosen_search):
 		Printer.logger('debug', "Starting solving")	
-		finish_zero_coordinate_y, finish_zero_coordinate_x = find_coordinates_of_the_given_digit(0, ideal_map)
-	    start_puzzle = start_puzzle.set_heuristic_cost(finish_zero_coordinate_y, finish_zero_coordinate_x, ideal_map, search, metric)
+
+		#create data objects where we will save temp values
+		start_object = MetaDataMap(map_=base_map)
+		finish_object = MetaDataMap(map_=ideal_map)
+
+		finish_zero_coordinate_y, finish_zero_coordinate_x = Solvable.find_coordinates_of_the_given_digit(0, ideal_map)
+		search = choosen_search
+		metric = choosen_metric
+		
+		#init calculation of the input map
+		start_object = start_object.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric)
 	
-	    max_total_cost = start_puzzle.total_cost
-	    z_a, z_b = _get_tile_coordinates(0, finish_puzzle)
+		#print status to the debug logs
+		start_object.objectCreator()
+		start_object.dumpObject()
+
+		exit(1)
+		# max_total_cost = start_puzzle.total_cost
+		# z_a, z_b = _get_tile_coordinates(0, finish_puzzle)
 	
-	    complexity_time = 0
-	    max_size = 0
-	    while 1:
-	        complexity_size = 1
-	        puzzle, new_total_cost, complexity_time, complexity_size = _ida_recursive_search(start_puzzle, max_total_cost, z_a, z_b, complexity_time, complexity_size, metric, finish_puzzle, n, search)
+		# complexity_time = 0
+		# max_size = 0
+	 #    while 1:
+	 #        complexity_size = 1
+	 #        puzzle, new_total_cost, complexity_time, complexity_size = _ida_recursive_search(start_puzzle, max_total_cost, z_a, z_b, complexity_time, complexity_size, metric, finish_puzzle, n, search)
 	
-	        if max_size < complexity_size:
-	            max_size = complexity_size
+	 #        if max_size < complexity_size:
+	 #            max_size = complexity_size
 	
-	        if puzzle != None:
-	            _print_solution(puzzle, complexity_time, max_size, start_time)
-	            return
+	 #        if puzzle != None:
+	 #            _print_solution(puzzle, complexity_time, max_size, start_time)
+	 #            return
 	
-	        if new_total_cost == math.inf:
-	            return
+	 #        if new_total_cost == math.inf:
+	 #            return
 	
-	        max_total_cost = new_total_cost
-
-	@staticmethod
-	def euristic_calculator(zero_coordinate_y, zero_coordinate_x, ideal_map, search, metric):
-		Printer.logger('debug', 'starting calculating euristic with next map {ideal_map}, search {seach}, metric {metric}')
-        total_size = 0
-
-        # trying to handle blind search (uniform cost a.k.a. brute force machiiine)
-        if search == 3:
-            if self.parent_puzzle:
-                self.move_cost = self.parent_puzzle.move_cost + 1
-                self.total_cost = self.move_cost
-            else:
-                self.total_cost = self.move_cost
-        else:
-            # Manhatten, Euclidean, etc. Distance
-            for x, tiles_row in enumerate(self.tiles):
-
-                for y, tile_value in enumerate(tiles_row):
-
-                    if tile_value:
-                        a, b = _get_tile_coordinates(tile_value, finish_puzzle)
-
-                        if metric == 1:
-                            # Manhattan Distance
-                            total_size += abs(x - a) + abs(y - b)
-
-                        elif metric == 2:
-                            # Euclidean Distance
-                            total_size += math.sqrt((x - a)**2 + (y - b)**2)
-
-                        elif metric == 3:
-                            # Chebyshev Distance
-                            total_size += max([abs(x - a), abs(y - b)])
-
-                        elif metric == 4:
-                            # Minkowski Distance with p=4
-                            total_size += ((x - a)**4 + (y - b)**4)**0.25
-
-                        elif metric == 5:
-                            # Hamming Distance
-                            if tile_value != finish_puzzle.tiles[x][y]:
-                                total_size += 1
-
-                        elif metric == 6:
-                            # “Canberra Distance
-                            if x or a:
-                                total_size += abs(x-a) / (x+a)
-                            if y or b:
-                                total_size += abs(y-b) / (y+b)
-
-        self.total_size = total_size
-
-        # handle search type 1 standard or 2 greedy
-        if search == 2:
-            self.total_cost = self.total_size
-        else:
-            if self.parent_puzzle:
-                self.move_cost = self.parent_puzzle.move_cost + 1
-                self.total_cost = total_size + self.move_cost
-            else:
-                self.total_cost = total_size
-
-        return self
+	 #        max_total_cost = new_total_cost
 
 
 #utility function that actually start command line parser
