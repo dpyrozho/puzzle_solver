@@ -241,6 +241,7 @@ class Printer:
 			for ryad in tekushii_pazl.map_:
 				Printer.logger('term', ' '.join(map(str, ryad)))
 			Printer.logger('term', ' ')
+		return (len(global_set))
 
 	@staticmethod
 	def print_puzzle(puzzle, puzzle_size):
@@ -265,12 +266,13 @@ class Printer:
 
 	@staticmethod
 	def display_results(moves_to_finish, complexTime, complexSize, visualization):
-		Printer.print_list_node( Printer.get_list_node(moves_to_finish) )
-		print ("Done")
+		steps = Printer.print_list_node( Printer.get_list_node(moves_to_finish) )
 	    # # if visualization == True:
 	    # #     Printer.step_visualization(moves_to_finish.map_)
-	    # Printer.logger('term', f"complex time: {str(complexTime)}")
-	    # Printer.logger('term', f"complex size: {str(complexSize)}")
+	    print (parser.visual)
+		Printer.logger('term', f"complex time: {str(complexTime)}")
+		Printer.logger('term', f"complex size: {str(complexSize)}")
+		Printer.logger('term', f"total steps: {str(steps)}")
 	    # #Printer.logger('term', f"how many steps required: {str(len(moves_to_finish) - 1)}")
 	    # Printer.logger('term', f"full program time: {str(dt.now() - start_time)}")
 
@@ -519,6 +521,13 @@ class SolveManager:
 	#naidi luchshii solution v close set, i verni ego
 	@staticmethod
 	def check_best_variant_in_close_set(tekushii_pazl=None, close_set={}):
+		# print (tekushii_pazl)
+		# print (close_set)
+		# if tekushii_pazl in close_set:
+		# 	print ("ABBRAAA")
+		# 	for i in close_set:
+		# 		print (i)
+		# 	print (close_set[tekushii_pazl])
 		return tekushii_pazl in close_set and close_set[tekushii_pazl] <= tekushii_pazl.total_f
 
 	@staticmethod
@@ -527,13 +536,6 @@ class SolveManager:
 		#start_object = start_object.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric)
 
 		Printer.logger('debug', 'DONE ONCE WITH EURISTIC')
-#Internal variables from MetaData class
-#map_ = map_
-#otcovskii_pazl = otcovskii_pazl
-#euristic_h = euristic_h
-#cena_hoda_g = cena_hoda_g
-#total_f = total_f
-#poslednii_hod = poslednii_hod
 
 		open_set = []
 		heap_queue_algorithm.heappush(open_set, start_object)
@@ -552,8 +554,7 @@ class SolveManager:
 				size_complex = len(open_set) + len(close_set)
 
 			if tekushii_pazl == finish_object:
-				print (tekushii_pazl)
-				print ("beee")
+				Printer.logger('debug', 'Finally, find path to the final, bro!')
 				Printer.display_results(tekushii_pazl, time_complex, size_complex, 1)
 				return
 
@@ -561,11 +562,11 @@ class SolveManager:
 				Printer.logger('debug', 'WE ARE CREATING NEW CHILDS')
 				close_set[tekushii_pazl] = tekushii_pazl.total_f
 				nasledniki = SolveManager.create_naslednikov(tekushii_pazl, len_of_map)
-
-			for naslednik in nasledniki:
-				Printer.logger('debug', 'adding naslednikov v HEAP')
-				a = naslednik.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric)
-				heap_queue_algorithm.heappush(open_set, a)
+			
+				for naslednik in nasledniki:
+					Printer.logger('debug', 'adding naslednikov v HEAP')
+					a = naslednik.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric)
+					heap_queue_algorithm.heappush(open_set, a)
 
 	#obertka dlya osnovnogo rekursivnogo solvera
 	@staticmethod
@@ -693,6 +694,7 @@ class SolveManager:
 		nasledniki = []
 		x, y = Solvable.find_coordinates_of_the_given_digit(0, start_object.map_)
 
+		print (f"LEN OF MAP: {len_of_map}, x: {x}, y: {y}")
 		if x+1 < len_of_map and start_object.poslednii_hod != 'down':
 			nasledniki.append( SolveManager.prepare_move_up(start_object, x, y) )
 
@@ -705,8 +707,8 @@ class SolveManager:
 		if y-1 >= 0 and start_object.poslednii_hod != 'left':
 			nasledniki.append( SolveManager.prepare_move_right(start_object, x, y) )
 
-		# for i in nasledniki:
-		# 	i.dumpObject()
+		for i in nasledniki:
+			i.dumpObject()
 
 		return nasledniki
 #Internal variables from MetaData class
@@ -717,40 +719,6 @@ class SolveManager:
 #total_f = total_f
 #poslednii_hod = poslednii_hod
 
-	# @staticmethod
-	# def create_naslednikov(puzzle, n):
-	# 	child_set = []
-	# 	x, y = Solvable.find_coordinates_of_the_given_digit(0, puzzle.map_)
-
-	# 	if x+1 < n and puzzle.poslednii_hod != 'down':
-	# 		tiles = copy.deepcopy(puzzle.map_)
-	# 		tiles[x][y], tiles[x+1][y] = tiles[x+1][y], tiles[x][y]
-	# 		child_puzzle = MetaDataMap(tiles, puzzle)
-	# 		child_puzzle.poslednii_hod = 'up'
-	# 		child_set.append(child_puzzle)
-    
-	# 	if x-1 >= 0 and puzzle.poslednii_hod != 'up':
-	# 		tiles = copy.deepcopy(puzzle.map_)
-	# 		tiles[x][y], tiles[x-1][y] = tiles[x-1][y], tiles[x][y]
-	# 		child_puzzle = MetaDataMap(tiles, puzzle)
-	# 		child_puzzle.poslednii_hod = 'down'
-	# 		child_set.append(child_puzzle)
-    
-	# 	if y+1 < n and puzzle.poslednii_hod != 'right':
-	# 		tiles = copy.deepcopy(puzzle.map_)
-	# 		tiles[x][y], tiles[x][y+1] = tiles[x][y+1], tiles[x][y]
-	# 		child_puzzle = MetaDataMap(tiles, puzzle)
-	# 		child_puzzle.poslednii_hod = 'left'
-	# 		child_set.append(child_puzzle)
-    
-	# 	if y-1 >= 0 and puzzle.poslednii_hod != 'left':
-	# 		tiles = copy.deepcopy(puzzle.map_)
-	# 		tiles[x][y], tiles[x][y-1] = tiles[x][y-1], tiles[x][y]
-	# 		child_puzzle = MetaDataMap(tiles, puzzle)
-	# 		child_puzzle.poslednii_hod = 'right'
-	# 		child_set.append(child_puzzle)
-		
-	# 	return child_set
 
 #utility function that actually start command line parser
 def command_line_parsing():
@@ -795,6 +763,7 @@ def main(args):
 				return False
 #      npuzzle(puzzle, good_puzzle, args.metric, args.search, args.visual)
 		SolveManager.start_solve(puzzle, good_puzzle, args.metric, args.search)
+
 
 if __name__ == "__main__":
 	#step #1. parse command line arguements, for future manipulations
