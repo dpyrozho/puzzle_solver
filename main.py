@@ -135,8 +135,6 @@ class Solvable:
 			for x, kolonka in enumerate(ryadok):
 				if full_puzzle_map[y][x] == digit:
 					return y, x
-				else:
-					continue
 
 	@staticmethod
 	def find_zero_cell(puzzle):
@@ -437,7 +435,7 @@ class MetaDataMap():
 		Printer.logger('debug', 'Objected MetaDataMap created')
 
 	def euristic_calculator(self, zero_coordinate_y, zero_coordinate_x, finish_object, choosen_search, choosen_metric):
-		Printer.logger('debug', f'starting calculating euristic with next map {finish_object.map_}, choosen_search {choosen_search}, choosen_metric {choosen_metric}')
+		Printer.logger('debug', f'starting calculating euristic with next map {self.map_}, choosen_search {choosen_search}, choosen_metric {choosen_metric}')
 		total_heuristic_f = 0
 
 		# trying to handle blind choosen_search (uniform cost a.k.a. brute force machiiine)
@@ -526,8 +524,9 @@ class SolveManager:
 	@staticmethod
 	def main_a_star_algorithm(start_object, finish_object, metric=1, search=1):
 		finish_zero_coordinate_y, finish_zero_coordinate_x = Solvable.find_coordinates_of_the_given_digit(0, finish_object.map_)
-		start_object = start_object.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric)
+		#start_object = start_object.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric)
 
+		Printer.logger('debug', 'DONE ONCE WITH EURISTIC')
 #Internal variables from MetaData class
 #map_ = map_
 #otcovskii_pazl = otcovskii_pazl
@@ -543,7 +542,7 @@ class SolveManager:
 		len_of_map = len(start_object.map_)
 		while 1:
 			if not open_set:
-				print('NOT FOUND', start_puzzle.tiles)
+				print('NOT FOUND', start_object.map_)
 				return
 
 			tekushii_pazl = heap_queue_algorithm.heappop(open_set)
@@ -559,11 +558,14 @@ class SolveManager:
 				return
 
 			if not SolveManager.check_best_variant_in_close_set(tekushii_pazl, close_set):
+				Printer.logger('debug', 'WE ARE CREATING NEW CHILDS')
 				close_set[tekushii_pazl] = tekushii_pazl.total_f
 				nasledniki = SolveManager.create_naslednikov(tekushii_pazl, len_of_map)
 
 			for naslednik in nasledniki:
-				heap_queue_algorithm.heappush(open_set, naslednik.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric))
+				Printer.logger('debug', 'adding naslednikov v HEAP')
+				a = naslednik.euristic_calculator(finish_zero_coordinate_y, finish_zero_coordinate_x, finish_object, search, metric)
+				heap_queue_algorithm.heappush(open_set, a)
 
 	#obertka dlya osnovnogo rekursivnogo solvera
 	@staticmethod
@@ -596,6 +598,7 @@ class SolveManager:
 		
 		SolveManager.main_a_star_algorithm(start_object, finish_object, choosen_metric, choosen_search)
 
+		exit(1)
 		if (recursive == True):
 			Printer.logger('debug', 'You have tried to use recursive search, bro, have fun :d')
 			Printer.logger('debug', "Entered main solver search loop")
@@ -651,13 +654,7 @@ class SolveManager:
 
 		return None, minimalnii_cost, time_complex, size_complex
 
-#Internal variables from MetaData class
-#map_ = map_
-#otcovskii_pazl = otcovskii_pazl
-#euristic_h = euristic_h
-#cena_hoda_g = cena_hoda_g
-#total_f = total_f
-#poslednii_hod = poslednii_hod
+
 
 	@staticmethod
 	def prepare_move_up(object_entity, x , y ):
@@ -712,6 +709,48 @@ class SolveManager:
 		# 	i.dumpObject()
 
 		return nasledniki
+#Internal variables from MetaData class
+#map_ = map_
+#otcovskii_pazl = otcovskii_pazl
+#euristic_h = euristic_h
+#cena_hoda_g = cena_hoda_g
+#total_f = total_f
+#poslednii_hod = poslednii_hod
+
+	# @staticmethod
+	# def create_naslednikov(puzzle, n):
+	# 	child_set = []
+	# 	x, y = Solvable.find_coordinates_of_the_given_digit(0, puzzle.map_)
+
+	# 	if x+1 < n and puzzle.poslednii_hod != 'down':
+	# 		tiles = copy.deepcopy(puzzle.map_)
+	# 		tiles[x][y], tiles[x+1][y] = tiles[x+1][y], tiles[x][y]
+	# 		child_puzzle = MetaDataMap(tiles, puzzle)
+	# 		child_puzzle.poslednii_hod = 'up'
+	# 		child_set.append(child_puzzle)
+    
+	# 	if x-1 >= 0 and puzzle.poslednii_hod != 'up':
+	# 		tiles = copy.deepcopy(puzzle.map_)
+	# 		tiles[x][y], tiles[x-1][y] = tiles[x-1][y], tiles[x][y]
+	# 		child_puzzle = MetaDataMap(tiles, puzzle)
+	# 		child_puzzle.poslednii_hod = 'down'
+	# 		child_set.append(child_puzzle)
+    
+	# 	if y+1 < n and puzzle.poslednii_hod != 'right':
+	# 		tiles = copy.deepcopy(puzzle.map_)
+	# 		tiles[x][y], tiles[x][y+1] = tiles[x][y+1], tiles[x][y]
+	# 		child_puzzle = MetaDataMap(tiles, puzzle)
+	# 		child_puzzle.poslednii_hod = 'left'
+	# 		child_set.append(child_puzzle)
+    
+	# 	if y-1 >= 0 and puzzle.poslednii_hod != 'left':
+	# 		tiles = copy.deepcopy(puzzle.map_)
+	# 		tiles[x][y], tiles[x][y-1] = tiles[x][y-1], tiles[x][y]
+	# 		child_puzzle = MetaDataMap(tiles, puzzle)
+	# 		child_puzzle.poslednii_hod = 'right'
+	# 		child_set.append(child_puzzle)
+		
+	# 	return child_set
 
 #utility function that actually start command line parser
 def command_line_parsing():
