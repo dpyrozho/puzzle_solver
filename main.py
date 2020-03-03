@@ -8,7 +8,7 @@ start_time = dt.now()
 
 DEBUG = False
 BASE_ZERO = 0
-
+VISUAL = False
 #########################################
 #BASIC
 #########################################
@@ -227,7 +227,7 @@ class Printer:
 
 	@staticmethod
 	def get_list_node(final_graph_node):
-		print (final_graph_node)
+		# print (final_graph_node)
 		global_set = []
 
 		while final_graph_node:
@@ -237,10 +237,11 @@ class Printer:
 
 	@staticmethod
 	def print_list_node(global_set):
-		for tekushii_pazl in global_set:
-			for ryad in tekushii_pazl.map_:
-				Printer.logger('term', ' '.join(map(str, ryad)))
-			Printer.logger('term', ' ')
+		if VISUAL == True:
+			for tekushii_pazl in global_set:
+				for ryad in tekushii_pazl.map_:
+					Printer.logger('term', ' '.join(map(str, ryad)))
+				Printer.logger('term', ' ')
 		return (len(global_set))
 
 	@staticmethod
@@ -269,7 +270,7 @@ class Printer:
 		steps = Printer.print_list_node( Printer.get_list_node(moves_to_finish) )
 	    # # if visualization == True:
 	    # #     Printer.step_visualization(moves_to_finish.map_)
-	    print (parser.visual)
+		# print (parser.visual)
 		Printer.logger('term', f"complex time: {str(complexTime)}")
 		Printer.logger('term', f"complex size: {str(complexSize)}")
 		Printer.logger('term', f"total steps: {str(steps)}")
@@ -442,6 +443,7 @@ class MetaDataMap():
 
 		# trying to handle blind choosen_search (uniform cost a.k.a. brute force machiiine)
 		if choosen_search == 3:
+			Printer.logger('debug', f'Choosed search 3: brute search')
 			if self.otcovskii_pazl:
 				self.cena_hoda_g = self.otcovskii_pazl.cena_hoda_g + 1
 				self.total_f = self.cena_hoda_g
@@ -458,50 +460,58 @@ class MetaDataMap():
 
 						if choosen_metric == 1:
                             # манхетенская дистанция
-							#Printer.logger('debug', f'calucate map with Manhattan')
+							Printer.logger('heuristic_log', f'calucate map with Manhattan')
 							total_heuristic_f += abs(x - a) + abs(y - b)
+							Printer.logger('heuristic_log', f'heuristic size {total_heuristic_f}')
 
 						elif choosen_metric == 2:
 							# эвклидовая дистанция
-							#Printer.logger('debug', f'calucate map with Euclidean')
+							Printer.logger('heuristic_log', f'calucate map with Euclidean')
 							total_heuristic_f += math.sqrt((x - a)**2 + (y - b)**2)
+							Printer.logger('heuristic_log', f'heuristic size {total_heuristic_f}')
 
 						elif choosen_metric == 3:
 							# чебышева
-							#Printer.logger('debug', f'calucate map with Chebyshev')
+							Printer.logger('heuristic_log', f'calucate map with Chebyshev')
 							total_heuristic_f += max([abs(x - a), abs(y - b)])
+							Printer.logger('heuristic_log', f'heuristic size {total_heuristic_f}')
 
 						elif choosen_metric == 4:
 							# минковски p=4
-							#Printer.logger('debug', f'calucate map with Minkowski')
+							Printer.logger('debug', f'calucate map with Minkowski')
 							total_heuristic_f += ((x - a)**4 + (y - b)**4)**0.25
+							Printer.logger('heuristic_log', f'heuristic size {total_heuristic_f}')
 
 						elif choosen_metric == 5:
 							# хамминга
-							#Printer.logger('debug', f'calucate map with Hamming')
+							Printer.logger('heuristic_log', f'calucate map with Hamming')
 							if znachenie_stroki != finish_object.map_[x][y]:
 								total_heuristic_f += 1
+							Printer.logger('heuristic_log', f'heuristic size {total_heuristic_f}')
 
 						elif choosen_metric == 6:
 							# канбера
-							#Printer.logger('debug', f'calucate map with Canberra')
+							Printer.logger('heuristic_log', f'calucate map with Canberra')
 							
 							if x or a:
 								total_heuristic_f += abs(x-a) / (x+a)
 							
 							if y or b:
 								total_heuristic_f += abs(y-b) / (y+b)
+							Printer.logger('heuristic_log', f'heuristic size {total_heuristic_f}')
 
 		self.euristic_h = total_heuristic_f
+		Printer.logger('heuristic_log', f'save to the object instance {self.euristic_h}')
 
 		# чекни тут стандартный поиск и еще гриди сьорч (2ечка)
 
 		if choosen_search == 2:
 			self.total_f = self.euristic_h
-		
+			Printer.logger('debug', f'Choosed search 2: greeedy search, use total cost based on euristic {self.total_f}')
 		else:
 			#//checkai default algo
 			if self.otcovskii_pazl:
+				Printer.logger('debug', f'Choosed search 1: default search')
 
 				self.cena_hoda_g = self.otcovskii_pazl.cena_hoda_g + 1
 
@@ -509,6 +519,7 @@ class MetaDataMap():
 		
 			else:
 			#kostyl na init iteraciyu
+				Printer.logger('debug', f'Choosed search 1: default search. init iteration')
 				self.total_f = total_heuristic_f
 		#vozvrashai object na bazu
 		return self
@@ -518,7 +529,7 @@ class MetaDataMap():
 #Class that process resolving of the puzzle
 class SolveManager:
 
-	#naidi luchshii solution v close set, i verni ego
+	#naidi luchshii solution v close set, i verni ego ili nichego, sps
 	@staticmethod
 	def check_best_variant_in_close_set(tekushii_pazl=None, close_set={}):
 		# print (tekushii_pazl)
@@ -616,17 +627,9 @@ class SolveManager:
 					return
 				summary_cost = updated_summary_cost
 
-#Internal variables from MetaData class
-#map_ = map_
-#otcovskii_pazl = otcovskii_pazl
-#euristic_h = euristic_h
-#cena_hoda_g = cena_hoda_g
-#total_f = total_f
-#poslednii_hod = poslednii_hod
-
 	@staticmethod
 	def searching_step(map_object, summary_cost, finish_zero_coordinate_y, finish_zero_coordinate_x, time_complex, size_complex, metric, finish_object, len_of_map, search):
-#method kotorii delaet vsyu robotu, generit naslednikov, delaet hod, obnovlyaet vesa, cennosti hodov i tak dalee
+	#method kotorii delaet vsyu robotu, generit naslednikov, delaet hod, obnovlyaet vesa, cennosti hodov i tak dalee
 		print ('zashel v searching_step')
 		if map_object.total_f > summary_cost:
 			return None, map_object.total_f, time_complex, size_complex
@@ -694,7 +697,7 @@ class SolveManager:
 		nasledniki = []
 		x, y = Solvable.find_coordinates_of_the_given_digit(0, start_object.map_)
 
-		print (f"LEN OF MAP: {len_of_map}, x: {x}, y: {y}")
+		Printer.logger('debug', f"LEN OF MAP: {len_of_map}, x: {x}, y: {y}")
 		if x+1 < len_of_map and start_object.poslednii_hod != 'down':
 			nasledniki.append( SolveManager.prepare_move_up(start_object, x, y) )
 
@@ -706,25 +709,19 @@ class SolveManager:
 
 		if y-1 >= 0 and start_object.poslednii_hod != 'left':
 			nasledniki.append( SolveManager.prepare_move_right(start_object, x, y) )
-
-		for i in nasledniki:
-			i.dumpObject()
+		#debug purpose
+		# for i in nasledniki:
+		# 	i.dumpObject()
 
 		return nasledniki
-#Internal variables from MetaData class
-#map_ = map_
-#otcovskii_pazl = otcovskii_pazl
-#euristic_h = euristic_h
-#cena_hoda_g = cena_hoda_g
-#total_f = total_f
-#poslednii_hod = poslednii_hod
-
 
 #utility function that actually start command line parser
 def command_line_parsing():
     global DEBUG
+    global VISUAL
     args = parser.parse_args()
     DEBUG = args.debug
+    VISUAL = args.visual
     return args
 
 def main(args):
@@ -752,7 +749,7 @@ def main(args):
 		
 		if puzzle_size > 5:
 			#ToDo: done. add function that will generate puzzle with len > 5
-			Generator.big_generation_handler(args.basic, puzzle_size)
+			good_puzzle = Generator.big_generation_handler(args.basic, puzzle_size)
 
 		Printer.logger('term', "Received puzzle:")
 		Printer.print_puzzle(puzzle, puzzle_size)
